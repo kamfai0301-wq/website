@@ -122,11 +122,21 @@ function compact(s){
  return stripCountry(s).replace(/[\s\u3000]+/g,"").replace(/[，,；;。]+$/g,"");
 }
 function detectProvince(s){
+ // 1) 地址已寫明省級行政區時，永遠以明確省份為準。
  for(const [p, aliases] of provinceAliases){
    if(s.includes(p) || aliases.some(a=>s.includes(a))) return p;
  }
- for(const [city, province] of Object.entries(cityProvince)){
-   if(s.includes(city)) return province;
+ // 2) 城市名稱必須帶「市」等行政區標記才可命中。
+ //    避免把「中山路」的「中山」誤認成廣東省中山市。
+ const entries = Object.entries(cityProvince).sort((a,b)=>b[0].length-a[0].length);
+ for(const [city, province] of entries){
+   if(city.endsWith("市")){
+     if(s.includes(city)) return province;
+   }else{
+     const escaped = city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+     const re = new RegExp(escaped + "(?:市|自治州|地區|地区|盟)");
+     if(re.test(s)) return province;
+   }
  }
  return "";
 }
