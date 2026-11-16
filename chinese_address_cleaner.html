@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>中文地址整理工具</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e4e8ef;--blue:#2563eb;--blue2:#eff6ff;--green:#15803d;--amber:#a16207}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:32px auto;padding:0 18px}.hero{margin-bottom:20px}.hero h1{font-size:27px;margin:0 0 6px}.hero p{margin:0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:20px;margin:14px 0;box-shadow:0 4px 18px #17203308}
+label{display:block;font-weight:650;margin:0 0 8px}textarea{width:100%;min-height:170px;resize:vertical;border:1px solid #cfd6e2;border-radius:10px;padding:13px;font:14px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2563eb18}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.hint{font-size:13px;color:var(--muted);margin-top:7px}
+button{border:0;border-radius:9px;padding:10px 16px;font-weight:650;cursor:pointer;background:var(--blue);color:white}button.secondary{background:#eef2f7;color:#263247}button:disabled{opacity:.55;cursor:wait}
+.options{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0;color:#344054;font-size:14px}.options label{font-weight:500;margin:0;display:flex;gap:7px;align-items:center}
+.status{font-size:13px;color:var(--muted);margin-left:auto}.results{display:grid;gap:12px}.item{border:1px solid var(--line);border-radius:11px;padding:14px;background:#fff}.itemhead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}.num{font-weight:700}.tag{font-size:12px;border-radius:99px;padding:3px 9px;background:#ecfdf3;color:var(--green)}.tag.warn{background:#fff7ed;color:var(--amber)}
+.field{margin:8px 0}.field small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}.value{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fafc;border:1px solid #edf0f5;border-radius:8px;padding:9px 11px;min-height:38px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{font-size:13px;padding:7px 11px}.foot{font-size:12px;color:var(--muted);line-height:1.6}
+@media(max-width:600px){main{margin:18px auto}.card{padding:14px}.hero h1{font-size:23px}.status{width:100%;margin:0}}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>中文地址整理工具</h1>
+    <p>貼上簡體或繁體地址，自動去除空格、補上可識別的國家／省份，並輸出繁體中文及英文。</p>
+  </header>
+
+
+  <section class="card">
+    <label for="nameInput">姓名轉換（可貼上簡體或繁體姓名，一行一個）</label>
+    <textarea id="nameInput" style="min-height:105px" placeholder="例如：&#10;张三&#10;李小龍&#10;歐陽娜娜"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="convertNames">轉換姓名</button>
+      <button class="secondary" id="clearNames">清空姓名</button>
+      <span class="status" id="nameStatus">尚未轉換</span>
+    </div>
+    <div id="nameResult" style="margin-top:14px" hidden>
+      <div class="field"><small>繁體中文姓名</small><div class="value" id="nameTraditional"></div></div>
+      <div class="field"><small>拼音（大寫）</small><div class="value" id="namePinyin"></div></div>
+      <div class="actions">
+        <button class="secondary" id="copyNameTraditional">複製繁體姓名</button>
+        <button class="secondary" id="copyNamePinyin">複製大寫拼音</button>
+        <button class="secondary" id="copyNameBoth">複製兩項</button>
+      </div>
+      <div class="hint">拼音按普通話漢語拼音輸出；多音字姓名可能需要按本人讀音人工核對。</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <label for="input">輸入地址（一行一筆，可一次貼上多筆）</label>
+    <textarea id="input" placeholder="例如：&#10;中国 山东省 招远市毕郭镇&#10;中國 山東省 招遠市畢郭鎮&#10;招远市毕郭镇"></textarea>
+    <div class="options">
+      <label><input type="checkbox" id="addCountry" checked> 缺少國家時補上「中國」</label>
+      <label><input type="checkbox" id="addProvince" checked> 可識別時自動補上省份</label>
+      <label><input type="checkbox" id="english" checked> 同時翻譯英文</label>
+    </div>
+    <div class="row">
+      <button id="run">整理地址</button>
+      <button class="secondary" id="clear">清空</button>
+      <span class="status" id="status">尚未整理</span>
+    </div>
+    <div class="hint">目前以中國內地地址為預設。英文翻譯需要連接網絡；簡繁轉換使用 OpenCC 線上字庫。</div>
+  </section>
+
+  <section class="card" id="resultCard" hidden>
+    <div class="row" style="justify-content:space-between;margin-bottom:14px">
+      <strong>整理結果</strong>
+      <div class="actions" style="margin:0">
+        <button class="secondary" id="copyAll">複製全部結果</button>
+        <button class="secondary" id="download">下載 CSV</button>
+      </div>
+    </div>
+    <div id="results" class="results"></div>
+  </section>
+  <section class="card foot">
+    <strong>地址補全規則</strong><br>
+    • 已內置常見省、市對照；例如識別到「招遠市」會補上「山東省」。<br>
+    • 如果地址沒有足夠線索判斷省份，工具會標示「未能判斷」，不會亂猜。<br>
+    • 工具會清除地址內所有空格，並將國家名稱統一為一個「中國」。<br>
+    • 自動翻譯屬機器翻譯，正式寄送或作合規文件前請核對英文地名。
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let rows = [];
+let openccReady = null;
+
+const provinceAliases = [
+ ["北京市",["北京","北京市"]],["天津市",["天津","天津市"]],["上海市",["上海","上海市"]],["重慶市",["重庆","重慶","重庆市","重慶市"]],
+ ["河北省",["河北"]],["山西省",["山西"]],["遼寧省",["辽宁","遼寧"]],["吉林省",["吉林"]],["黑龍江省",["黑龙江","黑龍江"]],
+ ["江蘇省",["江苏","江蘇"]],["浙江省",["浙江"]],["安徽省",["安徽"]],["福建省",["福建"]],["江西省",["江西"]],["山東省",["山东","山東"]],
+ ["河南省",["河南"]],["湖北省",["湖北"]],["湖南省",["湖南"]],["廣東省",["广东","廣東"]],["海南省",["海南"]],
+ ["四川省",["四川"]],["貴州省",["贵州","貴州"]],["雲南省",["云南","雲南"]],["陝西省",["陕西","陝西"]],["甘肅省",["甘肃","甘肅"]],
+ ["青海省",["青海"]],["臺灣省",["台湾","臺灣"]],["內蒙古自治區",["内蒙古","內蒙古"]],["廣西壯族自治區",["广西","廣西"]],
+ ["西藏自治區",["西藏"]],["寧夏回族自治區",["宁夏","寧夏"]],["新疆維吾爾自治區",["新疆"]],["香港特別行政區",["香港"]],
+ ["澳門特別行政區",["澳门","澳門"]]
+];
+const cityProvince = {
+ "招远":"山东省","招遠":"山東省","烟台":"山东省","煙台":"山東省","济南":"山东省","濟南":"山東省","青岛":"山东省","青島":"山東省","潍坊":"山东省","濰坊":"山東省","威海":"山东省","淄博":"山东省","临沂":"山东省","臨沂":"山東省",
+ "广州":"广东省","廣州":"廣東省","深圳":"广东省","珠海":"广东省","佛山":"广东省","東莞":"廣東省","东莞":"广东省","中山":"广东省","汕头":"广东省",
+ "杭州":"浙江省","宁波":"浙江省","寧波":"浙江省","温州":"浙江省","溫州":"浙江省","绍兴":"浙江省","紹興":"浙江省","金华":"浙江省","金華":"浙江省",
+ "南京":"江苏省","南京市":"江苏省","苏州":"江苏省","蘇州":"江蘇省","无锡":"江苏省","無錫":"江蘇省","常州":"江苏省","徐州":"江苏省",
+ "福州":"福建省","厦门":"福建省","廈門":"福建省","泉州":"福建省","漳州":"福建省",
+ "武汉":"湖北省","武漢":"湖北省","宜昌":"湖北省","襄阳":"湖北省","襄陽":"湖北省",
+ "长沙":"湖南省","長沙":"湖南省","株洲":"湖南省","衡阳":"湖南省","衡陽":"湖南省",
+ "成都":"四川省","绵阳":"四川省","綿陽":"四川省","德阳":"四川省","德陽":"四川省","重庆":"重庆市","重慶":"重慶市",
+ "郑州":"河南省","鄭州":"河南省","洛阳":"河南省","洛陽":"河南省","开封":"河南省","開封":"河南省",
+ "石家庄":"河北省","石家莊":"河北省","唐山":"河北省","保定":"河北省","邯郸":"河北省","邯鄲":"河北省",
+ "太原":"山西省","大同":"山西省","沈阳":"辽宁省","瀋陽":"遼寧省","大连":"辽宁省","大連":"遼寧省","长春":"吉林省","長春":"吉林省","哈尔滨":"黑龙江省","哈爾濱":"黑龍江省",
+ "合肥":"安徽省","芜湖":"安徽省","蕪湖":"安徽省","南昌":"江西省","赣州":"江西省","贛州":"江西省",
+ "昆明":"云南省","昆明市":"云南省","曲靖":"云南省","贵阳":"贵州省","貴陽":"貴州省","遵义":"贵州省","遵義":"貴州省",
+ "西安":"陕西省","西安市":"陕西省","宝鸡":"陕西省","寶雞":"陝西省","兰州":"甘肃省","蘭州":"甘肅省","银川":"宁夏回族自治区","銀川":"寧夏回族自治區",
+ "南宁":"广西壮族自治区","南寧":"廣西壯族自治區","桂林":"广西壮族自治区","柳州":"广西壮族自治区","海口":"海南省","三亚":"海南省","三亞":"海南省",
+ "呼和浩特":"内蒙古自治区","包头":"内蒙古自治区","包頭":"內蒙古自治區","乌鲁木齐":"新疆维吾尔自治区","烏魯木齊":"新疆維吾爾自治區","拉萨":"西藏自治区","拉薩":"西藏自治區"
+};
+
+function stripCountry(s){
+ return s.replace(/中华人民共和国|中華人民共和國|中国|中國/g,"");
+}
+function compact(s){
+ return stripCountry(s).replace(/[\s\u3000]+/g,"").replace(/[，,；;。]+$/g,"");
+}
+function detectProvince(s){
+ // 1) 地址已寫明省級行政區時，永遠以明確省份為準。
+ for(const [p, aliases] of provinceAliases){
+   if(s.includes(p) || aliases.some(a=>s.includes(a))) return p;
+ }
+ // 2) 城市名稱必須帶「市」等行政區標記才可命中。
+ //    避免把「中山路」的「中山」誤認成廣東省中山市。
+ const entries = Object.entries(cityProvince).sort((a,b)=>b[0].length-a[0].length);
+ for(const [city, province] of entries){
+   if(city.endsWith("市")){
+     if(s.includes(city)) return province;
+   }else{
+     const escaped = city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+     const re = new RegExp(escaped + "(?:市|自治州|地區|地区|盟)");
+     if(re.test(s)) return province;
+   }
+ }
+ return "";
+}
+function traditional(s){
+ if(window.OpenCC && !traditional.converter){
+   traditional.converter = OpenCC.Converter({from:"cn",to:"tw"});
+ }
+ return traditional.converter ? traditional.converter(s) : s;
+}
+
+let pinyinReady = null;
+function loadPinyin(){
+ if(window.pinyinPro && window.pinyinPro.pinyin) return Promise.resolve();
+ if(pinyinReady) return pinyinReady;
+ pinyinReady = new Promise((resolve,reject)=>{
+   const sc=document.createElement("script");
+   sc.src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.min.js";
+   sc.onload=()=>window.pinyinPro && window.pinyinPro.pinyin ? resolve() : reject(new Error("拼音字庫載入失敗"));
+   sc.onerror=()=>reject(new Error("拼音字庫載入失敗，請檢查網絡連線"));
+   document.head.appendChild(sc);
+ });
+ return pinyinReady;
+}
+
+function loadOpenCC(){
+ if(window.OpenCC) return Promise.resolve();
+ if(openccReady) return openccReady;
+ openccReady = new Promise((resolve,reject)=>{
+   const sc=document.createElement("script");
+   sc.src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js";
+   sc.onload=resolve; sc.onerror=()=>reject(new Error("簡繁轉換字庫載入失敗，請檢查網絡連線"));
+   document.head.appendChild(sc);
+ });
+ return openccReady;
+}
+function normalize(raw){
+ let s=compact(raw);
+ if(!s) return {base:"",province:"",status:"空白地址"};
+ const province=detectProvince(s);
+ if(province && !provinceAliases.some(([p])=>s.includes(p))){
+   // Only add province when city-based recognition gives a reliable match.
+   s=province+s;
+ }
+ if($("addCountry").checked) s="中国"+s;
+ else s=stripCountry(s);
+ return {base:s,province:province||"未能判斷",status:province?"已識別省份":"未能識別省份，請人工確認"};
+}
+async function translate(text){
+ const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(text)+"&langpair=zh-CN|en";
+ const r=await fetch(url);
+ if(!r.ok) throw new Error("翻譯服務暫時未能連線");
+ const j=await r.json();
+ const out=j?.responseData?.translatedText;
+ if(!out || j.responseStatus!==200) throw new Error("英文翻譯未能完成");
+ return out.replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function render(){
+ $("results").innerHTML=rows.map((r,i)=>`
+ <article class="item">
+  <div class="itemhead"><span class="num">地址 ${i+1}</span><span class="tag ${r.status.includes("未能")||r.status.includes("失敗")?"warn":""}">${esc(r.status)}</span></div>
+  <div class="field"><small>繁體中文地址</small><div class="value">${esc(r.tc||"—")}</div></div>
+  <div class="field"><small>英文地址</small><div class="value">${esc(r.en||"—")}</div></div>
+  <div class="field"><small>識別省份</small><div class="value">${esc(r.province)}</div></div>
+  <div class="actions"><button class="secondary" onclick="copyOne(${i},'tc')">複製繁體</button><button class="secondary" onclick="copyOne(${i},'en')">複製英文</button></div>
+ </article>`).join("");
+ $("resultCard").hidden=!rows.length;
+}
+window.copyOne=async(i,k)=>{await navigator.clipboard.writeText(rows[i][k]||"");$("status").textContent="已複製";};
+
+let convertedNameTraditional = "";
+let convertedNamePinyin = "";
+$("convertNames").addEventListener("click",async()=>{
+ const names=$("nameInput").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(!names.length){$("nameStatus").textContent="請先輸入姓名";return;}
+ $("convertNames").disabled=true;
+ $("nameStatus").textContent="正在轉換…";
+ try{
+   await loadOpenCC();
+   await loadPinyin();
+   const traditionalNames=names.map(n=>traditional(n.replace(/[\s\u3000]+/g,"")));
+   const pinyinNames=traditionalNames.map(n=>window.pinyinPro.pinyin(n,{toneType:"none",type:"array"}).join(" ").toUpperCase());
+   convertedNameTraditional=traditionalNames.join("\\n");
+   convertedNamePinyin=pinyinNames.join("\\n");
+   $("nameTraditional").textContent=convertedNameTraditional;
+   $("namePinyin").textContent=convertedNamePinyin;
+   $("nameResult").hidden=false;
+   $("nameStatus").textContent=`完成：${names.length} 個姓名`;
+ }catch(e){
+   $("nameStatus").textContent=e.message;
+   alert(e.message);
+ }finally{$("convertNames").disabled=false;}
+});
+$("clearNames").addEventListener("click",()=>{
+ $("nameInput").value="";
+ $("nameResult").hidden=true;
+ convertedNameTraditional="";
+ convertedNamePinyin="";
+ $("nameStatus").textContent="已清空";
+});
+$("copyNameTraditional").addEventListener("click",async()=>{
+ await navigator.clipboard.writeText(convertedNameTraditional);
+ $("nameStatus").textContent="已複製繁體姓名";
+});
+$("copyNamePinyin").addEventListener("click",async()=>{
+ await navigator.clipboard.writeText(convertedNamePinyin);
+ $("nameStatus").textContent="已複製大寫拼音";
+});
+$("copyNameBoth").addEventListener("click",async()=>{
+ await navigator.clipboard.writeText("繁體姓名\\n"+convertedNameTraditional+"\\n\\n拼音（大寫）\\n"+convertedNamePinyin);
+ $("nameStatus").textContent="已複製姓名及拼音";
+});
+
+$("run").addEventListener("click",async()=>{
+ const lines=$("input").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(!lines.length){$("status").textContent="請先貼上地址";return;}
+ $("run").disabled=true; $("status").textContent="正在整理…"; rows=[];
+ try{
+   await loadOpenCC();
+   for(let i=0;i<lines.length;i++){
+     const n=normalize(lines[i]);
+     const tc=traditional(n.base);
+     let en="";
+     let status=n.status;
+     if($("english").checked){
+       try{en=await translate(tc);}catch(e){status+="；英文翻譯失敗";}
+     }
+     rows.push({original:lines[i],tc,en,province:n.province,status});
+     render();
+     $("status").textContent=`已完成 ${i+1}/${lines.length}`;
+   }
+   $("status").textContent=`完成：${rows.length} 筆`;
+ }catch(e){
+   $("status").textContent=e.message;
+   if(!rows.length) alert(e.message);
+ }finally{$("run").disabled=false;}
+});
+$("clear").addEventListener("click",()=>{$("input").value="";rows=[];render();$("status").textContent="已清空";});
+$("copyAll").addEventListener("click",async()=>{
+ const t=["原始地址\t繁體中文\t英文\t省份\t狀態",...rows.map(r=>[r.original,r.tc,r.en,r.province,r.status].join("\t"))].join("\n");
+ await navigator.clipboard.writeText(t);$("status").textContent="已複製全部結果";
+});
+$("download").addEventListener("click",()=>{
+ const data=[["原始地址","繁體中文地址","英文地址","識別省份","狀態"],...rows.map(r=>[r.original,r.tc,r.en,r.province,r.status])];
+ const csv="\uFEFF"+data.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download="地址整理結果.csv";a.click();URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
